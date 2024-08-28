@@ -1,119 +1,165 @@
-"use client"
-import { FormEvent, useState } from "react";
-import { Task } from "./task";
-import { Card } from "@/components/ui/card";
-import { DragDropContext, Droppable } from "@hello-pangea/dnd"
+'use client';
 
-export default function Home() {
-  const [newTast, setNewTask] = useState("");
+import { Card, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { MoveLeft, MoveRight } from 'lucide-react';
+import { useState } from 'react';
 
-  const [tasks, setTasks] = useState([
-    {
-      id: "0",
-      name: "Estudar react com typescript"
-    },
-    {
-      id: "1",
-      name: "Inscrever no canal do Sujeito Programador"
-    },
-    {
-      id: "2",
-      name: "Pagar o aluguel"
-    },
-  ])
+type Permission = {
+	id: string;
+	name: string;
+};
 
+export default function AccessLiberation() {
+	const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([
+		{ id: "1", name: "Read Articles" },
+		{ id: "2", name: "Write Articles" },
+		{ id: "3", name: "Delete Articles" },
+	]);
 
-  function handleAddTask(event: FormEvent) {
-    event.preventDefault();
+	const [enabledPermissions, setEnabledPermissions] = useState<Permission[]>([]);
 
-    if (newTast === "") return;
+	const [selectedPermission, setSelectedPermission] = useState<string | null>(null);
 
-    let newItem = {
-      id: `${tasks.length + 1}`,
-      name: newTast
-    }
-    setTasks(allTasks => [...allTasks, newItem])
-    setNewTask("")
-  }
+	function onDragEnd(result: any) {
+		const { source, destination } = result;
 
+		if (!destination) return;
 
-  function reorder<T>(list: T[], startIndex: number, endIndex: number) {
-    const result = Array.from(list);
-    const [removed] = result.splice(startIndex, 1);
-    result.splice(endIndex, 0, removed);
-    return result;
-  }
+		if (source.droppableId === destination.droppableId) {
+			const items = reorder(
+				source.droppableId === "availablePermissions" ? availablePermissions : enabledPermissions,
+				source.index,
+				destination.index
+			);
 
-  function onDragEnd(result: any) {
-    if(!result.destination) {
-      return;
-    }
-    const items = reorder(tasks, result.source.index, result.destination.index);
-    setTasks(items)
+			source.droppableId === "availablePermissions" ? setAvailablePermissions(items) : setEnabledPermissions(items);
+		} else {
+			const { sourceList, destinationList } = move(
+				source.droppableId === "availablePermissions" ? availablePermissions : enabledPermissions,
+				destination.droppableId === "availablePermissions" ? availablePermissions : enabledPermissions,
+				source.index,
+				destination.index
+			);
 
-    // console.log(result.source.index)
-    // console.log(result.destination.index)
+			setAvailablePermissions(sourceList);
+			setEnabledPermissions(destinationList);
+		}
+	}
 
-  }
+	function reorder<T>(list: T[], startIndex: number, endIndex: number) {
+		const result = Array.from(list);
+		const [removed] = result.splice(startIndex, 1);
+		result.splice(endIndex, 0, removed);
+		return result;
+	}
 
-  return (
-     <div className="w-full h-screen flex flex-col items-center px-4 pt-52">
-      <h1 className="font-bold text-4xl text-white mb-4">Tarefas</h1>
+	function move<T>(sourceList: T[], destinationList: T[], sourceIndex: number, destinationIndex: number) {
+		const sourceClone = Array.from(sourceList);
+		const destClone = Array.from(destinationList);
+		const [removed] = sourceClone.splice(sourceIndex, 1);
+		destClone.splice(destinationIndex, 0, removed);
 
+		return {
+			sourceList: sourceClone,
+			destinationList: destClone,
+		};
+	}
 
-      {/* <form className="w-full max-w-2xl mb-4 flex" onSubmit={handleAddTask}>
-        <input
-          type="text"
-          placeholder="Digite o nome da tarefa..."
-          className="flex-1 h-10 rounded-md px-2"
-          value={newTast}
-          onChange={(event) => setNewTask(event.target.value)}
-        />
-        <button
-          type="submit"
-          className="bg-blue-500 ml-4 rounded-md px-4 text-white font-medium"
-        >
-          Add
-        </button>
-      </form> */}
+	function handleSelect(permissionId: string) {
+		setSelectedPermission(permissionId);
+	}
 
-      <Card className="flex w-1/2 gap-6">
-      <Card className="bg-zinc-100 p-3 rounded-md w-full max-w-2xl">
-        
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="tasks" type="list" direction="horizontal">
-              {(provided) => (
-                <article
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                >
-                  {tasks.map((task, index) => (
-                    <Task key={task.id} task={task} index={index} />
-                  ))}
-                  {provided.placeholder}
-                </article>
-              )}
-            </Droppable>
-            </DragDropContext>
-        </Card>
+	function moveToEnabled() {
+		if (selectedPermission) {
+			const index = availablePermissions.findIndex(p => p.id === selectedPermission);
+			if (index !== -1) {
+				const { sourceList, destinationList } = move(availablePermissions, enabledPermissions, index, enabledPermissions.length);
+				setAvailablePermissions(sourceList);
+				setEnabledPermissions(destinationList);
+				setSelectedPermission(null);
+			}
+		}
+	}
 
-        <Card className="bg-zinc-100 p-3 rounded-md w-full max-w-2xl">
-          
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="tasks" type="list" direction="horizontal">
-              {(provided) => (
-                <article
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                >
-                  
-                  {provided.placeholder}
-                </article>
-              )}
-            </Droppable>
-            </DragDropContext>
-        </Card>
-        </Card>
-    </div>
-  );
+	function moveToAvailable() {
+		if (selectedPermission) {
+			const index = enabledPermissions.findIndex(p => p.id === selectedPermission);
+			if (index !== -1) {
+				const { sourceList, destinationList } = move(enabledPermissions, availablePermissions, index, availablePermissions.length);
+				setEnabledPermissions(sourceList);
+				setAvailablePermissions(destinationList);
+				setSelectedPermission(null);
+			}
+		}
+	}
+
+	return (
+		<>
+			<CardTitle>Liberação de Acesso</CardTitle>
+
+			<DragDropContext onDragEnd={onDragEnd}>
+				<div className="flex gap-6 items-center">
+					<Droppable droppableId="availablePermissions">
+						{(provided) => (
+							<Card ref={provided.innerRef} {...provided.droppableProps}
+								className='w-80 h-96 p-4 flex flex-col items-center'>
+								<CardTitle>Funções do Sistema</CardTitle>
+								<Separator className='mt-2' />
+								{availablePermissions.map((permission, index) => (
+									<Draggable key={permission.id} draggableId={permission.id} index={index}>
+										{(provided) => (
+											<div
+												ref={provided.innerRef}
+												{...provided.draggableProps}
+												{...provided.dragHandleProps}
+												onClick={() => handleSelect(permission.id)}
+												className={`text-md w-full p-2 cursor-pointer ${selectedPermission === permission.id ? 'bg-gray-700' : ''}`}
+											>
+												{permission.name}
+												<Separator className='mt-2' />
+											</div>
+										)}
+									</Draggable>
+								))}
+								{provided.placeholder}
+							</Card>
+						)}
+					</Droppable>
+					<div className="flex flex-col gap-4">
+						<MoveRight className='cursor-pointer' onClick={moveToEnabled} />
+						<MoveLeft className='cursor-pointer' onClick={moveToAvailable} />
+					</div>
+
+					<Droppable droppableId="enabledPermissions">
+						{(provided) => (
+							<Card ref={provided.innerRef} {...provided.droppableProps}
+								className='w-80 h-96 p-4 flex flex-col items-center'>
+								<CardTitle>Funções liberadas para o Usuário</CardTitle>
+								<Separator className='mt-2' />
+								{enabledPermissions.map((permission, index) => (
+									<Draggable key={permission.id} draggableId={permission.id} index={index}>
+										{(provided) => (
+											<div
+												ref={provided.innerRef}
+												{...provided.draggableProps}
+												{...provided.dragHandleProps}
+												onClick={() => handleSelect(permission.id)}
+												className={`text-md w-full p-2 cursor-pointer ${selectedPermission === permission.id ? 'bg-gray-700' : ''}`}
+											>
+												{permission.name}
+												<Separator className='mt-2' />
+											</div>
+										)}
+									</Draggable>
+								))}
+								{provided.placeholder}
+							</Card>
+						)}
+					</Droppable>
+				</div>
+			</DragDropContext>
+		</>
+	);
 }
